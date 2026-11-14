@@ -362,14 +362,24 @@ async function loadLiveRaces(){
   }
   if(results){
    const finished=races.filter(x=>x.status==='finished'&&x.winner_id&&[x.car1_id,x.car2_id].includes(x.winner_id)).slice().sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,5);
-   if(!finished.length)results.textContent='Todavía no hay carreras finalizadas.';
-   for(const race of finished){
-    const loser=race.winner_id===race.car1_id?race.car2_id:race.car1_id;
-    const winVotes=votes.filter(v=>v.race_id===race.id&&v.car_id===race.winner_id).length;
-    const loseVotes=votes.filter(v=>v.race_id===race.id&&v.car_id===loser).length;
-    const row=document.createElement('div');row.className='entry';
-    row.textContent='🏁 '+(race.title||'Carrera')+' · 🏆 Pista: '+(names.get(race.winner_id)||'Ganador')+' venció a '+(names.get(loser)||'Perdedor')+' · 🗳️ Votos: '+winVotes+' vs '+loseVotes;
-    results.append(row);
+   if(!finished.length){results.textContent='Todavía no hay carreras finalizadas.';}
+   else{
+    const scroll=document.createElement('div');scroll.style.cssText='width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch';
+    const table=document.createElement('table');table.style.cssText='width:100%;min-width:480px;border-collapse:collapse;font-size:13px';
+    const thead=document.createElement('thead'),headRow=document.createElement('tr');
+    ['Fecha','Carrito 1','Carrito 2','Ganador'].forEach(label=>{
+     const th=document.createElement('th');th.textContent=label;th.style.cssText='padding:12px 8px;text-align:left;border-bottom:2px solid #425b7b;color:#c5d4e9';headRow.append(th);
+    });thead.append(headRow);table.append(thead);
+    const tbody=document.createElement('tbody');
+    for(const race of finished){
+     const tr=document.createElement('tr');
+     let date='—';if(race.created_at){const d=new Date(race.created_at);if(!Number.isNaN(d.getTime()))date=d.toLocaleDateString('es-US',{month:'2-digit',day:'2-digit',year:'numeric'});}
+     [date,names.get(race.car1_id)||'Carrito 1',names.get(race.car2_id)||'Carrito 2','🏆 '+(names.get(race.winner_id)||'Ganador')].forEach((value,i)=>{
+      const td=document.createElement('td');td.textContent=value;td.style.cssText='padding:12px 8px;border-bottom:1px solid #2c405a;vertical-align:top;overflow-wrap:anywhere'+(i===3?';color:#86efac;font-weight:700':'');tr.append(td);
+     });tbody.append(tr);
+    }
+    table.append(tbody);scroll.append(table);results.append(scroll);
+    const note=document.createElement('p');note.className='muted small';note.textContent='Fecha de publicación · Últimos 5 resultados. Historial completo en Carreras.';results.append(note);
    }
   }
   // Historial oficial: el ganador de pista es independiente de los votos.
