@@ -588,7 +588,7 @@ async function castVote(raceId,carId){
   const token=await auth.getToken();
   const r=await fetch(BASE+'/rest/v1/rpc/lfw_cast_vote',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({p_race_id:raceId,p_car_id:carId})});
   if(!r.ok){let data={};try{data=await r.json()}catch{}throw new Error(data.message||'HTTP '+r.status)}
-  alert(auth.lang==='en'?'Vote registered! +10 points 🏁':'¡Voto registrado! +10 puntos 🏁');
+  alert(auth.lang==='en'?'You earned 10 points for participating! 🏁\n\nIf your chosen car wins this race, you earn 100 additional points.':'¡Ganaste 10 puntos por participar! 🏁\n\nSi el carrito que elegiste gana esta carrera, recibirás 100 puntos adicionales.');
   await loadLiveRaces();await auth.loadProfile();
  }catch(e){alert('No se pudo registrar el voto: '+e.message)}
 }
