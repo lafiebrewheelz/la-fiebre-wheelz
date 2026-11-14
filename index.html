@@ -301,15 +301,77 @@ async function loadAdminCars(){
   }
  }catch(e){message('No se pudo leer el garaje: '+e.message)}
 }
+// Convierte las fotos a PNG ANTES de enviarlas a Supabase.
+// HEIC/HEIF necesita un decodificador adicional en navegadores sin soporte nativo.
+let heicLoaderPromise;
+function loadHeicDecoder(){
+  if(!heicLoaderPromise){
+    heicLoaderPromise=new Promise((resolve,reject)=>{
+      if(typeof window.heic2any==='function'){resolve();return;}
+      const script=document.createElement('script');
+      script.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+      script.onload=()=>typeof window.heic2any==='function'
+        ?resolve():reject(new Error('No se pudo iniciar el conversor HEIC.'));
+      script.onerror=()=>reject(new Error('No se pudo cargar el conversor HEIC. Comprueba tu conexión.'));
+      document.head.appendChild(script);
+    }).catch(e=>{heicLoaderPromise=null;throw e;});
+  }
+  return heicLoaderPromise;
+}
+async function normalizeCarPhoto(file){
+  if(!file)return null;
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  const heic=['heic','heif'].includes(ext)||/image\/hei[cf]/i.test(file.type);
+  if(!heic && !file.type.startsWith('image/'))
+    throw new Error('Selecciona una imagen válida.');
+  if(file.size>25*1024*1024)
+    throw new Error('La foto original no debe superar 25 MB.');
+  let source=file;
+  if(heic){
+    await loadHeicDecoder();
+    try{
+      source=await window.heic2any({blob:file,toType:'image/png'});
+      if(Array.isArray(source))source=source[0];
+    }catch(e){
+      throw new Error('No se pudo convertir esta foto HEIC. Intenta exportarla como PNG desde Fotos.');
+    }
+  }
+  // El canvas normaliza JPG, PNG, WebP y otros formatos que el navegador pueda abrir.
+  // Para HEIC ya convertido, también garantiza que el resultado final sea PNG.
+  const url=URL.createObjectURL(source);
+  let bitmap;
+  try{
+    bitmap=await new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>resolve(img);
+      img.onerror=()=>reject(new Error('El navegador no pudo abrir la imagen.'));
+      img.src=url;
+    });
+    const canvas=document.createElement('canvas');
+    canvas.width=bitmap.naturalWidth;
+    canvas.height=bitmap.naturalHeight;
+    if(!canvas.width||!canvas.height)throw new Error('Imagen sin dimensiones válidas.');
+    const ctx=canvas.getContext('2d');
+    if(!ctx)throw new Error('No se pudo procesar la imagen.');
+    ctx.drawImage(bitmap,0,0);
+    const png=await new Promise((resolve,reject)=>canvas.toBlob(
+      b=>b?resolve(b):reject(new Error('No se pudo generar el PNG.')),
+      'image/png'
+    ));
+    if(png.type!=='image/png')throw new Error('La conversión no generó PNG.');
+    if(png.size>8*1024*1024)
+      throw new Error('El PNG supera 8 MB. Reduce el tamaño de la imagen.');
+    return png;
+  }finally{URL.revokeObjectURL(url);}
+}
 async function uploadPhoto(file){
   if(!file)return null;
-  if(!file.type.startsWith('image/'))throw new Error('Selecciona una imagen.');
-  if(file.size>8*1024*1024)throw new Error('La foto debe pesar menos de 8 MB.');
+  message('Convirtiendo foto a PNG…');
+  const png=await normalizeCarPhoto(file);
   if(session?.expires_at && Date.now()/1000>session.expires_at-60)await refresh();
-  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-  const path=crypto.randomUUID()+'.'+ext;
+  const path=crypto.randomUUID()+'.png';
   const r=await fetch(BASE+'/storage/v1/object/car-photos/'+path,{
-    method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':file.type,'x-upsert':'false'},body:file
+    method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'image/png','x-upsert':'false'},body:png
   });
   if(!r.ok){let err;try{err=await r.json()}catch{}throw new Error(err?.message||'Error subiendo foto (HTTP '+r.status+').')}
   return BASE+'/storage/v1/object/public/car-photos/'+path;
@@ -699,78 +761,5 @@ $('lfwUserLogout').onclick=async()=>{try{await req('/auth/v1/logout',{method:'PO
  $('lfwOpenRaces')?.addEventListener('click',()=>switchAdmin('races'));
  document.querySelectorAll('.lfwAdminBack').forEach(b=>b.addEventListener('click',()=>switchAdmin(null)));
  $('lfwSignOut')?.addEventListener('click',()=>switchAdmin(null));
-})();
-</script><style>
-.lfw-comment-box{margin:16px 0;padding:15px;border:1px solid #344b6c;background:#101b2e;border-radius:15px;color:#f7f8fc}
-.lfw-comment-box h3{margin:0 0 8px;font-size:17px}.lfw-comment-box .muted{color:#aebbd0;font-size:12px}
-.lfw-comment-item{padding:10px 0;border-bottom:1px solid #2d3c54;overflow-wrap:anywhere}
-.lfw-comment-item strong{color:#fff}.lfw-comment-item small{color:#aab8cf;margin-left:8px}
-.lfw-comment-box textarea{width:100%;min-height:68px;background:#0b1424;border:1px solid #435676;border-radius:9px;color:white;padding:10px;font:inherit;resize:vertical}
-.lfw-comment-box button{margin-top:8px}.lfw-comment-box .lfw-comment-delete{padding:4px 8px;margin-left:10px;font-size:11px;background:#6b1c29;color:white;border:0;border-radius:6px}
-.lfw-finished-alert{border:1px solid #44745c;border-radius:12px;background:#123023;padding:12px;margin:12px 0;font-weight:700}
-</style><script>
-(()=>{'use strict';
- const BASE='https://lcmxyqshsmezzesfkeuw.supabase.co';
- const KEY='sb_publishable_UegpwpyvYioyixm5RY8kNQ_fFiKgZ07';
- const ADMIN='1882e9cd-28cc-4fa3-b4df-a8a6bc4504f9';
- const api=async(path,options={})=>{
-  const headers={apikey:KEY,'Content-Type':'application/json',...(options.headers||{})};
-  const response=await fetch(BASE+'/rest/v1/'+path,{...options,headers});
-  if(!response.ok)throw Error((await response.text()).slice(0,240));
-  return response.status===204?null:response.json();
- };
- const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n};
- async function makeComments(race){
-  const box=el('section',undefined,'lfw-comment-box');box.dataset.raceId=race.id;
-  box.append(el('h3','💬 Comentarios · '+(race.title||'Carrera finalizada')));
-  const feed=el('div','Cargando comentarios…');box.append(feed);
-  const form=el('form');const textarea=el('textarea');textarea.maxLength=500;textarea.placeholder='¿Qué te pareció la carrera? ¡Comenta aquí!';textarea.setAttribute('aria-label','Tu comentario');
-  const button=el('button','Publicar comentario','primary');button.type='submit';form.append(textarea,button);box.append(form);
-  const note=el('p','Inicia sesión para comentar. Todos pueden leer los comentarios.','muted');box.append(note);
-  const auth=window.lfwAuth;
-  if(!auth?.user){textarea.disabled=true;button.disabled=true}else note.textContent='Comenta con tu cuenta de La Fiebre Wheelz.';
-  const load=async()=>{
-   try{
-    const comments=await api('race_comments?select=id,user_id,comment,created_at&race_id=eq.'+encodeURIComponent(race.id)+'&order=created_at.asc&limit=200');
-    feed.replaceChildren();
-    if(!comments.length){feed.append(el('p','Sé el primero en comentar.','muted'));return}
-    const ids=[...new Set(comments.map(c=>c.user_id))];let profiles=[];
-    try{profiles=await api('profiles?select=id,username&id=in.('+ids.join(',')+')')}catch(e){console.warn('Nombres de comentarios:',e)}
-    const names=new Map(profiles.map(p=>[p.id,p.username]));
-    for(const c of comments){
-     const item=el('div',undefined,'lfw-comment-item');
-     item.append(el('strong','@'+(names.get(c.user_id)||'Piloto')));
-     item.append(el('small',new Date(c.created_at).toLocaleString('es-US')));
-     item.append(el('div',c.comment));
-     if(auth?.user?.id===ADMIN){const del=el('button','Eliminar','lfw-comment-delete');del.type='button';del.onclick=async()=>{if(!confirm('¿Eliminar este comentario?'))return;try{const token=await auth.getToken();await api('race_comments?id=eq.'+encodeURIComponent(c.id),{method:'DELETE',headers:{Authorization:'Bearer '+token,Prefer:'return=minimal'}});await load()}catch(e){alert('No se pudo eliminar: '+e.message)}};item.append(del)}
-     feed.append(item);
-    }
-   }catch(e){feed.textContent='No se pudieron cargar los comentarios. Verifica que ejecutaste el SQL en Supabase.';console.error(e)}
-  };
-  form.onsubmit=async ev=>{
-   ev.preventDefault();const comment=textarea.value.trim();if(!comment||!auth?.user)return;
-   button.disabled=true;
-   try{const token=await auth.getToken();await api('race_comments',{method:'POST',headers:{Authorization:'Bearer '+token,Prefer:'return=minimal'},body:JSON.stringify({race_id:String(race.id),user_id:auth.user.id,comment})});textarea.value='';await load()}
-   catch(e){alert('No se pudo publicar: '+e.message)}finally{button.disabled=false}
-  };
-  await load();return box;
- }
- let updating=false;
- async function refresh(){
-  if(updating)return;updating=true;
-  try{
-   const races=await api('races?select=id,title,status,winner_id,created_at&status=eq.finished&winner_id=not.is.null&order=created_at.desc&limit=100');
-   const home=document.getElementById('lfwHomeResultsBody');
-   const history=document.getElementById('lfwRaceHistory');
-   if(home){home.querySelectorAll('.lfw-comment-box,.lfw-finished-alert').forEach(n=>n.remove());if(races.length){
-    const alert=el('div','🏁 ¡Carrera finalizada! Mira el resultado y comenta qué te pareció.','lfw-finished-alert');home.append(alert);
-    home.append(await makeComments(races[0]));
-   }}
-   if(history){history.querySelectorAll('.lfw-comment-box').forEach(n=>n.remove());
-    for(const race of races.slice(0,20)){const details=el('details');details.className='lfw-comment-box';const summary=el('summary','💬 Ver comentarios: '+(race.title||'Carrera'));details.append(summary);details.addEventListener('toggle',async()=>{if(details.open&&!details.dataset.loaded){details.dataset.loaded='1';const comments=await makeComments(race);details.append(comments)}},{once:false});history.append(details)}
-   }
-  }catch(e){console.error('Comentarios:',e)}finally{updating=false}
- }
- document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,1400);document.addEventListener('click',e=>{if(e.target.closest('.nav button') || e.target.closest('#lfwLogin button') || e.target.closest('#lfwRegister button'))setTimeout(refresh,900)});document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()})});
 })();
 </script></body></html>
