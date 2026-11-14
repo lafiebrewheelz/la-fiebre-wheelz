@@ -38,7 +38,7 @@
 <section class="page" id="perfil"><div class="panel"><h2 data-i18n="profileTitle">👤 Mi perfil</h2><div class="lfw-auth-box" id="lfwProfileGuest"><h3 data-i18n="joinTitle">🏁 Entra a La Fiebre Wheelz</h3><p data-i18n="joinDesc">Regístrate para votar y ganar puntos.</p><input autocomplete="email" id="lfwUserEmail" placeholder="Correo electrónico" type="email"/><input autocomplete="current-password" id="lfwUserPassword" placeholder="Contraseña (mínimo 6 caracteres)" type="password"/><input autocomplete="nickname" id="lfwUserName" hidden maxlength="30" placeholder="Username (para registrarte)"/><button class="primary" data-i18n="login" id="lfwUserLogin" type="button">Iniciar sesión</button><button class="secondary" data-i18n="register" id="lfwUserRegister" type="button">Crear cuenta</button><p aria-live="polite" class="muted small" id="lfwUserAuthStatus"></p><p class="muted small" data-i18n="confirmEmail">Al registrarte, confirma tu correo si Supabase te envía un enlace.</p></div><div hidden="" id="lfwProfileLogged"><h3 id="lfwProfileUsername"></h3><p class="muted small" id="lfwProfileEmail"></p><div class="lfw-profile-grid"><div class="lfw-profile-stat"><small data-i18n="points">Puntos acumulados</small><b id="lfwStatPoints">0</b></div><div class="lfw-profile-stat"><small data-i18n="participations">Participaciones</small><b id="lfwStatTotal">0</b></div><div class="lfw-profile-stat"><small data-i18n="wins">Predicciones ganadas</small><b id="lfwStatWins">0</b></div><div class="lfw-profile-stat"><small data-i18n="losses">Predicciones perdidas</small><b id="lfwStatLosses">0</b></div></div><p class="muted small" id="lfwProfileRate"></p><h3 data-i18n="history">🏁 Historial de participaciones</h3><div class="lfw-filter"><button class="chosen" data-i18n="all" data-lfw-filter="all" type="button">Todas</button><button data-i18n="won" data-lfw-filter="won" type="button">Ganadas</button><button data-i18n="lost" data-lfw-filter="lost" type="button">Perdidas</button><button data-i18n="pending" data-lfw-filter="pending" type="button">Pendientes</button></div><div style="overflow-x:auto"><table class="lfw-history"><thead><tr><th data-i18n="race">Carrera</th><th data-i18n="choice">Mi elección</th><th data-i18n="result">Resultado</th><th data-i18n="pointsShort">Pts.</th></tr></thead><tbody id="lfwHistoryRows"></tbody></table></div><p class="muted small" id="lfwHistoryDetail"></p><button class="secondary" data-i18n="logout" id="lfwUserLogout" type="button">Cerrar sesión</button></div></div></section>
 <section class="page" id="admin"><div class="panel"><h2>🔐 Panel privado · La Fiebre Wheelz</h2><p class="muted">Acceso exclusivo para el administrador. Las operaciones se envían a Supabase; el panel mostrará el resultado o error.</p>
 <div id="lfwLogin"><h3>Iniciar sesión</h3><input autocomplete="username" class="input" id="lfwEmail" placeholder="Correo electrónico" type="email"/><input autocomplete="current-password" class="input" id="lfwPassword" placeholder="Contraseña" type="password"/><button class="primary" id="lfwSignIn">Entrar al panel</button></div>
-<div hidden="" id="lfwPrivate"><div class="row"><span class="muted small" id="lfwWho"></span><button class="primary" id="lfwSignOut" type="button">Cerrar sesión</button></div><h3>🏎️ Garaje oficial</h3><p class="muted small">Agrega el nombre y una foto desde tu iPhone. Las fotos se guardan en Supabase Storage.</p><input class="input" id="lfwCarName" maxlength="140" placeholder="Nombre del Hot Wheels"/><input accept="image/*" class="input" id="lfwCarPhoto" type="file"/><button class="primary" id="lfwAddCar" type="button">+ Agregar carrito</button><p aria-live="polite" id="lfwCarStatus" role="status" style="padding:8px 0;font-weight:700">Listo para agregar carritos.</p><div id="lfwAdminCars"></div>
+<div hidden="" id="lfwPrivate"><div class="row"><span class="muted small" id="lfwWho"></span><button class="primary" id="lfwSignOut" type="button">Cerrar sesión</button></div><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><h3>👥 Usuarios registrados</h3><p class="muted small">Consulta los perfiles y cambia el username. Crear o borrar cuentas de acceso requiere una función segura adicional.</p><div class="row"><input class="input" id="lfwUserSearchAdmin" placeholder="Buscar por username"/><button class="secondary" id="lfwRefreshUsers" type="button">Actualizar usuarios</button></div><p class="muted small" id="lfwUsersStatus"></p><div id="lfwAdminUsers"></div><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><h3>🏎️ Garaje oficial</h3><p class="muted small">Agrega el nombre y una foto desde tu iPhone. Las fotos se guardan en Supabase Storage.</p><input class="input" id="lfwCarName" maxlength="140" placeholder="Nombre del Hot Wheels"/><input accept="image/*" class="input" id="lfwCarPhoto" type="file"/><button class="primary" id="lfwAddCar" type="button">+ Agregar carrito</button><p aria-live="polite" id="lfwCarStatus" role="status" style="padding:8px 0;font-weight:700">Listo para agregar carritos.</p><div id="lfwAdminCars"></div>
 <hr style="border:0;border-top:1px solid #374151;margin:24px 0"/>
 <h3>🏁 Administrar carreras y resultados</h3>
 <p class="muted small">Elige dos carros y publica la carrera sin ganador para recibir votos. Cuando termine, edita el resultado.</p>
@@ -191,6 +191,8 @@ const BASE='https://lcmxyqshsmezzesfkeuw.supabase.co';
 const APIKEY='sb_publishable_UegpwpyvYioyixm5RY8kNQ_fFiKgZ07';
 const ADMIN_UID='1882e9cd-28cc-4fa3-b4df-a8a6bc4504f9';
 let session=null;
+const ADMIN_SESSION_KEY='lfw_admin_session';
+function saveAdminSession(){if(session)localStorage.setItem(ADMIN_SESSION_KEY,JSON.stringify(session));else localStorage.removeItem(ADMIN_SESSION_KEY)}
 const $=id=>document.getElementById(id);
 const message=t=>{ $('lfwAuthMsg').textContent=t; for(const id of ['lfwCarStatus','lfwRaceStatus']){const el=$(id);if(el)el.textContent=t;} }; 
 function authHeaders(){return {'apikey':APIKEY,'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'}}
@@ -202,7 +204,7 @@ async function request(path,options={}){
 }
 async function refresh(){
  if(!session?.refresh_token)return false;
- try{const d=await request('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'apikey':APIKEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})});session=d;return true}catch{session=null;return false}
+ try{const d=await request('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'apikey':APIKEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})});session=d;saveAdminSession();return true}catch{session=null;saveAdminSession();return false}
 }
 async function api(path,options={}){
  if(session?.expires_at && Date.now()/1000>session.expires_at-60)await refresh();
@@ -221,9 +223,28 @@ async function signIn(){
  try{
   const d=await request('/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':APIKEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
   if(d.user?.id!==ADMIN_UID){session=null;message('Esta cuenta no está autorizada como administrador.');return}
-  session=d;$('lfwPassword').value='';view();message('Acceso autorizado.');await loadAdminCars();await loadAdminRaces();
+  session=d;saveAdminSession();$('lfwPassword').value='';view();message('Acceso autorizado.');await loadAdminCars();await loadAdminRaces();await loadAdminUsers();
  }catch(e){message('No se pudo iniciar sesión: '+e.message)}finally{$('lfwSignIn').disabled=false}
 }
+async function loadAdminUsers(){
+ const box=$('lfwAdminUsers');if(!box||!session)return;
+ box.replaceChildren();$('lfwUsersStatus').textContent='Cargando usuarios…';
+ try{
+ const rows=await api('profiles?select=id,username,points,total_predictions,correct_predictions,created_at&order=created_at.desc&limit=1000');
+ const q=($('lfwUserSearchAdmin').value||'').toLowerCase();const matches=rows.filter(x=>x.username.toLowerCase().includes(q));
+ $('lfwUsersStatus').textContent=matches.length+' usuarios encontrados';
+ for(const p of matches){
+ const line=document.createElement('div');line.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #374151;padding:10px 0';
+ const name=document.createElement('input');name.className='input';name.style.flex='1 1 160px';name.value=p.username;name.maxLength=30;
+ const stats=document.createElement('span');stats.className='muted small';stats.textContent='⭐ '+p.points+' pts · '+p.total_predictions+' votos · '+p.correct_predictions+' aciertos';
+ const btn=document.createElement('button');btn.className='secondary';btn.textContent='Guardar nombre';
+ btn.onclick=async()=>{const username=name.value.trim();if(!/^[A-Za-z0-9_]{3,30}$/.test(username)){alert('Username: 3 a 30 caracteres, letras, números o _');return}try{btn.disabled=true;await api('rpc/lfw_admin_update_username',{method:'POST',body:JSON.stringify({p_user_id:p.id,p_username:username})});$('lfwUsersStatus').textContent='✅ Username actualizado';}catch(e){alert('No se pudo guardar: '+e.message)}finally{btn.disabled=false}};
+ line.append(name,stats,btn);box.append(line);
+ }
+ }catch(e){$('lfwUsersStatus').textContent='Error: '+e.message}
+}
+$('lfwRefreshUsers').addEventListener('click',loadAdminUsers);
+$('lfwUserSearchAdmin').addEventListener('input',()=>{clearTimeout(window.lfwUserSearchTimer);window.lfwUserSearchTimer=setTimeout(loadAdminUsers,250)});
 let adminCars=[];
 let adminRaces=[];
 async function loadAdminCars(){
@@ -536,7 +557,7 @@ async function castVote(raceId,carId){
 }
 $('lfwSignIn').addEventListener('click',signIn);
 $('lfwPassword').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
-$('lfwSignOut').addEventListener('click',()=>{session=null;$('lfwPassword').value='';view();message('Sesión cerrada.')});
+$('lfwSignOut').addEventListener('click',()=>{session=null;saveAdminSession();$('lfwPassword').value='';view();message('Sesión cerrada.')});
 $('lfwAddCar').addEventListener('click',addCar);
 $('lfwRaceA').addEventListener('change',updateWinnerOptions);
 $('lfwRaceB').addEventListener('change',updateWinnerOptions);
@@ -544,6 +565,7 @@ $('lfwAddRace').addEventListener('click',addRace);
 loadLiveRaces();
 window.lfwReloadRaces=loadLiveRaces;
 view();
+(async()=>{try{const saved=JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY)||'null');if(!saved?.access_token||saved.user?.id!==ADMIN_UID)return;session=saved;if(session.expires_at&&Date.now()/1000>session.expires_at-60&&!await refresh())throw Error('Sesión vencida');view();await Promise.all([loadAdminCars(),loadAdminRaces(),loadAdminUsers()]);}catch(e){session=null;saveAdminSession();view();}})();
 })();
 </script><script>
 (()=>{
