@@ -239,7 +239,11 @@ async function loadLiveRaces(){
   const r=await fetch(BASE+'/rest/v1/races?select=id,title,car1_id,car2_id,winner_id,status,created_at&order=created_at.asc&limit=500',{headers:{apikey:APIKEY}});
   if(!r.ok)throw new Error('HTTP '+r.status);
   const races=await r.json();
-  const names=new Map((liveCars||[]).map(c=>[c.id,c.name]));
+  // Leer la colección directamente aquí para evitar carreras entre solicitudes.
+  const cr=await fetch(BASE+'/rest/v1/cars?select=id,name,photo_url&limit=500',{headers:{apikey:APIKEY}});
+  if(!cr.ok)throw new Error('No se pudo leer la colección: HTTP '+cr.status);
+  const currentCars=await cr.json();
+  const names=new Map(currentCars.map(c=>[c.id,c.name]));
   const box=document.getElementById('rankRows');
   if(box){
    box.replaceChildren();
@@ -284,7 +288,7 @@ async function loadLiveRaces(){
    const duel=document.createElement('div');duel.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:6px;align-items:start';
    [race.car1_id,race.car2_id].forEach((carId,i)=>{
     if(i===1){const vs=document.createElement('div');vs.textContent='VS';vs.style.cssText='font-size:13px;font-weight:900;color:#ff4a51;text-align:center;padding-top:56px';duel.append(vs)}
-    const car=(liveCars||[]).find(c=>c.id===carId);
+    const car=currentCars.find(c=>c.id===carId);
     const card=document.createElement('div');card.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px';
     const photo=document.createElement('div');photo.style.cssText='width:100%;height:92px;border-radius:10px;background:#0a1323;display:flex;align-items:center;justify-content:center;overflow:hidden';
     if(car?.photo_url){const img=document.createElement('img');img.src=car.photo_url;img.alt=car.name;img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';photo.append(img)}
