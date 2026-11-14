@@ -24,4 +24,33 @@ function renderAdmin(){let list=allCars();document.getElementById('adminCars').i
 function renderGarage(){let q=(document.getElementById('search').value||'').toLowerCase();document.getElementById('garage').innerHTML=allCars().filter(x=>x.toLowerCase().includes(q)).map((m,i)=>`<div class="tile"><div style="font-size:38px">🏎️</div><b>${m}</b><p class="tag">✓ Abierto · Disponible para pista</p><span class="muted small">Victorias: 0 registradas · Derrotas: 0 registradas</span></div>`).join('')}
 function render(){let tot=state.votes.supra+state.votes.wrx;document.querySelectorAll('.selectable').forEach(e=>e.classList.toggle('selected',e.id==='select-'+state.choice));let b=document.getElementById('voteButton');b.disabled=!state.choice||state.voted;b.textContent=state.voted?'✓ Voto registrado':state.choice?'Votar por '+(state.choice==='supra'?'Toyota GR Supra':'Subaru WRX'):'Selecciona un carrito para votar';document.getElementById('voteMsg').innerHTML=state.voted?'<div class="notice">✓ Tu voto se contó en esta demostración.</div>':'';document.getElementById('voteBars').innerHTML=[['supra','Toyota GR Supra'],['wrx','Subaru WRX']].map(([id,name])=>`<div class="row"><b>${name}</b><span>${Math.round(state.votes[id]/tot*100)}% · ${state.votes[id]} votos</span></div><div class="progress"><span style="width:${state.votes[id]/tot*100}%"></span></div>`).join('');document.getElementById('homepts').textContent=state.points+' pts';document.getElementById('profilepts').textContent=state.points+' pts';document.getElementById('profilevotes').textContent=state.voted?'Has participado en 1 votación de demostración.':'Aún no has votado en esta demostración.';document.getElementById('rankRows').innerHTML=allCars().slice(0,30).map((m,i)=>`<div class="entry row"><span><b>#${i+1} ${m}</b><br><span class="muted small">0 victorias · 0 derrotas · % pendiente</span></span><span class="gold">0 pts</span></div>`).join('');document.getElementById('suggestions').innerHTML=state.suggestions.map(s=>`<div class="entry">💬 ${s.replaceAll('&','&amp;').replaceAll('<','&lt;')}</div>`).join('');renderGarage();renderAdmin()}
 render();
-</script></body></html>
+</script></body>
+
+<script>
+(async function () {
+  const url = "https://lcmxyqshsmezzesfkeuw.supabase.co";
+  const key = "sb_publishable_UegpwpyvYioyixm5RY8kNQ_fFiKgZ07";
+
+  try {
+    const response = await fetch(
+      url + "/rest/v1/cars?select=id,name&limit=10",
+      {
+        headers: {
+          apikey: key
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const cars = await response.json();
+    console.log("Carritos desde Supabase:", cars);
+  } catch (error) {
+    console.error("Error conectando Supabase:", error);
+  }
+})();
+</script>
+
+</html>
