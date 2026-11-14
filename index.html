@@ -54,7 +54,7 @@ async function loadLiveGarage(){
   const headers={apikey:'sb_publishable_UegpwpyvYioyixm5RY8kNQ_fFiKgZ07'};
   const box=document.getElementById('garage');
   try{
-    const response=await fetch(BASE+'/rest/v1/cars?select=id,name,photo_url&order=name.asc&limit=500',{headers});
+    const response=await fetch(BASE+'/rest/v1/cars?select=id,name,photo_url&order=name.asc&limit=500',{headers,signal:AbortSignal.timeout(15000)});
     if(!response.ok)throw new Error('HTTP '+response.status+' consultando cars');
     const rows=await response.json();
     if(!Array.isArray(rows))throw new Error('Respuesta inesperada');
@@ -86,13 +86,14 @@ async function loadLiveGarage(){
     console.info('Garaje cargado:',liveCars.length,'carritos');
   }catch(error){
     console.error('Error cargando garaje',error);
-    box.innerHTML='<div class="entry">⚠️ No pudimos cargar el garaje: '+escapeHtml(error.message)+'</div>';
+    box.innerHTML='<div class="entry">⚠️ No pudimos cargar el garaje: '+escapeHtml(error.message)+' <button class="secondary" onclick="loadLiveGarage()">Reintentar</button></div>';
   }
 }
 window.loadLiveGarage=loadLiveGarage;
 function render(){let tot=state.votes.supra+state.votes.wrx;document.querySelectorAll('.selectable').forEach(e=>e.classList.toggle('selected',e.id==='select-'+state.choice));let b=document.getElementById('voteButton');b.disabled=!state.choice||state.voted;b.textContent=state.voted?'✓ Voto registrado':state.choice?'Votar por '+(state.choice==='supra'?'Toyota GR Supra':'Subaru WRX'):'Selecciona un carrito para votar';document.getElementById('voteMsg').innerHTML=state.voted?'<div class="notice">✓ Tu voto se contó en esta demostración.</div>':'';document.getElementById('voteBars').innerHTML=[['supra','Toyota GR Supra'],['wrx','Subaru WRX']].map(([id,name])=>`<div class="row"><b>${name}</b><span>${Math.round(state.votes[id]/tot*100)}% · ${state.votes[id]} votos</span></div><div class="progress"><span style="width:${state.votes[id]/tot*100}%"></span></div>`).join('');document.getElementById('homepts').textContent=state.points+' pts';document.getElementById('profilepts').textContent=state.points+' pts';document.getElementById('profilevotes').textContent=state.voted?'Has participado en 1 votación de demostración.':'Aún no has votado en esta demostración.';document.getElementById('suggestions').innerHTML=state.suggestions.map(s=>`<div class="entry">💬 ${s.replaceAll('&','&amp;').replaceAll('<','&lt;')}</div>`).join('');renderGarage();renderAdmin()}
-render();
+// La carga de Supabase no debe depender de la interfaz de demostración.
 loadLiveGarage();
+try { render(); } catch (error) { console.warn('Interfaz de demostración:',error); }
 </script><script>
 /* Admin de Supabase. La seguridad de escritura depende de RLS en Supabase. */
 (()=>{
