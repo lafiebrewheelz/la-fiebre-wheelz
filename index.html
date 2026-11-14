@@ -263,20 +263,33 @@ async function loadLiveRaces(){
    }catch(e){console.warn('No se pudieron leer votos',e)}
   }
   for(const race of pending){
-   const wrap=document.createElement('div');wrap.className='entry';wrap.style.marginBottom='14px';
-   const title=document.createElement('h3');title.textContent='🗳️ '+(race.title||'Próxima carrera');wrap.append(title);
-   const subtitle=document.createElement('p');subtitle.className='muted small';subtitle.textContent='Votación abierta · El ganador se anunciará después de la carrera';wrap.append(subtitle);
-   const total=votes.filter(v=>v.race_id===race.id).length;
-   for(const carId of [race.car1_id,race.car2_id]){
+   const wrap=document.createElement('div');
+   wrap.style.cssText='background:#111c30;border:1px solid #354b6c;border-radius:16px;padding:14px;margin:12px 0 16px';
+   const title=document.createElement('div');title.style.cssText='font-size:19px;font-weight:800;text-align:center;margin-bottom:5px';
+   title.textContent='🏁 '+(race.title||'Próxima carrera');wrap.append(title);
+   const subtitle=document.createElement('div');subtitle.style.cssText='text-align:center;color:#aebbd0;font-size:12px;margin-bottom:14px';
+   subtitle.textContent='🟢 VOTACIÓN ABIERTA · SIN GANADOR';wrap.append(subtitle);
+   const duel=document.createElement('div');duel.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:6px;align-items:start';
+   [race.car1_id,race.car2_id].forEach((carId,i)=>{
+    if(i===1){const vs=document.createElement('div');vs.textContent='VS';vs.style.cssText='font-size:13px;font-weight:900;color:#ff4a51;text-align:center;padding-top:56px';duel.append(vs)}
     const car=(liveCars||[]).find(c=>c.id===carId);
-    const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0';
-    if(car?.photo_url){const img=document.createElement('img');img.src=car.photo_url;img.alt=car.name;img.style.cssText='width:75px;height:65px;object-fit:contain';row.append(img)}
-    const btn=document.createElement('button');btn.className='primary';btn.type='button';btn.textContent='Votar por '+(car?.name||'Carrito');
+    const card=document.createElement('div');card.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px';
+    const photo=document.createElement('div');photo.style.cssText='width:100%;height:92px;border-radius:10px;background:#0a1323;display:flex;align-items:center;justify-content:center;overflow:hidden';
+    if(car?.photo_url){const img=document.createElement('img');img.src=car.photo_url;img.alt=car.name;img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';photo.append(img)}
+    else photo.textContent='🏎️';
+    const name=document.createElement('div');name.textContent=car?.name||'Carrito';name.style.cssText='font-size:13px;font-weight:700;line-height:1.25;min-height:34px;overflow-wrap:anywhere';
+    const btn=document.createElement('button');btn.className='primary';btn.type='button';btn.textContent='🗳️ VOTAR';
+    btn.style.cssText='width:100%;max-width:145px;padding:10px 5px!important;font-size:13px!important;border-radius:11px;min-height:40px;white-space:nowrap';
     btn.onclick=()=>castVote(race.id,carId);
-    const count=document.createElement('span');count.className='muted small';count.textContent=votes.filter(v=>v.race_id===race.id&&v.car_id===carId).length+' votos';
-    row.append(btn,count);wrap.append(row);
-   }
-   const foot=document.createElement('p');foot.className='muted small';foot.textContent=total+' votos registrados · Un voto por navegador y carrera';wrap.append(foot);
+    const count=document.createElement('div');count.style.cssText='color:#c3cee1;font-size:12px';
+    const n=votes.filter(v=>v.race_id===race.id&&v.car_id===carId).length;
+    count.textContent=n+' '+(n===1?'voto':'votos');
+    card.append(photo,name,btn,count);duel.append(card);
+   });
+   wrap.append(duel);
+   const total=votes.filter(v=>v.race_id===race.id).length;
+   const foot=document.createElement('div');foot.style.cssText='text-align:center;font-size:11px;color:#91a2bd;margin-top:13px';
+   foot.textContent=total+' votos registrados · Un voto por navegador y carrera';wrap.append(foot);
    home.append(wrap);
   }
   // Retirar las tarjetas de la carrera de demostración cuando existan carreras oficiales.
