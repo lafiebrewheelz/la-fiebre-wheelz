@@ -262,6 +262,15 @@ async function loadLiveRaces(){
     if(vr.ok)votes=await vr.json();
    }catch(e){console.warn('No se pudieron leer votos',e)}
   }
+  // Consultar el voto de este navegador, incluso si se emitió antes de esta actualización.
+  const ownVotes=new Map();
+  const voterToken=localStorage.getItem('lfw_voter_token');
+  if(voterToken && pending.length){
+   try{
+    const ownResponse=await fetch(BASE+'/rest/v1/race_votes?select=race_id,car_id&voter_token=eq.'+encodeURIComponent(voterToken),{headers:{apikey:APIKEY}});
+    if(ownResponse.ok){for(const v of await ownResponse.json())ownVotes.set(v.race_id,v.car_id)}
+   }catch(e){console.warn('No se pudo consultar la selección local',e)}
+  }
   for(const race of pending){
    const wrap=document.createElement('div');
    wrap.style.cssText='background:#111c30;border:1px solid #354b6c;border-radius:16px;padding:14px;margin:12px 0 16px';
@@ -280,7 +289,25 @@ async function loadLiveRaces(){
     const name=document.createElement('div');name.textContent=car?.name||'Carrito';name.style.cssText='font-size:13px;font-weight:700;line-height:1.25;min-height:34px;overflow-wrap:anywhere';
     const btn=document.createElement('button');btn.className='primary';btn.type='button';btn.textContent='🗳️ VOTAR';
     btn.style.cssText='width:100%;max-width:145px;padding:10px 5px!important;font-size:13px!important;border-radius:11px;min-height:40px;white-space:nowrap';
-    btn.onclick=()=>castVote(race.id,carId);
+    const selectedCar=ownVotes.get(race.id);
+    if(selectedCar){
+     btn.disabled=true;
+     btn.onclick=null;
+     if(selectedCar===carId){
+      btn.textContent='✓ TU ELECCIÓN';
+      btn.style.setProperty('background','#166534','important');
+      btn.style.setProperty('color','#fff','important');
+      btn.style.setProperty('opacity','1','important');
+     }else{
+      btn.textContent='VOTACIÓN CERRADA';
+      btn.style.setProperty('background','#465163','important');
+      btn.style.setProperty('color','#d2d8e3','important');
+      btn.style.setProperty('opacity','1','important');
+     }
+     btn.style.setProperty('cursor','default','important');
+    }else{
+     btn.onclick=()=>castVote(race.id,carId);
+    }
     const count=document.createElement('div');count.style.cssText='color:#c3cee1;font-size:12px';
     const n=votes.filter(v=>v.race_id===race.id&&v.car_id===carId).length;
     count.textContent=n+' '+(n===1?'voto':'votos');
@@ -313,7 +340,7 @@ async function castVote(raceId,carId){
   let voter=localStorage.getItem('lfw_voter_token');
   if(!voter){voter=crypto.randomUUID();localStorage.setItem('lfw_voter_token',voter)}
   const r=await fetch(BASE+'/rest/v1/race_votes',{method:'POST',headers:{apikey:APIKEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({race_id:raceId,car_id:carId,voter_token:voter})});
-  if(r.status===409){alert('Ya votaste en esta carrera desde este navegador.');return}
+  if(r.status===409){alert('Ya votaste en esta carrera desde este navegador.');await loadLiveRaces();return}
   if(!r.ok){let data={};try{data=await r.json()}catch{}throw new Error(data.message||'HTTP '+r.status)}
   alert('¡Tu voto quedó registrado! 🏁');await loadLiveRaces();
  }catch(e){alert('No se pudo registrar el voto: '+e.message)}
