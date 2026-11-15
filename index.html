@@ -580,7 +580,7 @@ async function loadLiveRaces(){
       btn.style.setProperty('color','#fff','important');
       btn.style.setProperty('opacity','1','important');
      }else{
-      btn.textContent='VOTACIÓN CERRADA';
+      btn.textContent='CERRADO';
       btn.style.setProperty('background','#465163','important');
       btn.style.setProperty('color','#d2d8e3','important');
       btn.style.setProperty('opacity','1','important');
@@ -592,8 +592,10 @@ async function loadLiveRaces(){
     card.append(photo,name,btn);duel.append(card);
    });
    wrap.append(duel);
-   const foot=document.createElement('div');foot.style.cssText='text-align:center;font-size:11px;color:#91a2bd;margin-top:13px';
-   foot.textContent='⭐ +10 puntos por participar · 🏆 +100 puntos por acertar';wrap.append(foot);
+   const foot=document.createElement('div');foot.style.cssText='text-align:center;font-size:11px;color:#91a2bd;margin-top:13px;line-height:1.35;display:flex;flex-direction:column;gap:2px;align-items:center';
+   const footLine1=document.createElement('div');footLine1.textContent='⭐ +10 puntos por participar';
+   const footLine2=document.createElement('div');footLine2.textContent='🏆 +100 puntos por acertar';
+   foot.append(footLine1,footLine2);wrap.append(foot);
    if(all)all.append(wrap);
    if(raceIndex===0)home.append(wrap.cloneNode(true));
   }
@@ -834,13 +836,13 @@ $('lfwUserLogout').onclick=async()=>{try{await req('/auth/v1/logout',{method:'PO
  ['🔐 Panel privado · La Fiebre Wheelz','🔐 Private dashboard · La Fiebre Wheelz'],['Iniciar sesión','Sign in'],['Crear cuenta','Create account'],['Confirmar registro','Confirm registration'],
  ['Correo electrónico','Email address'],['Correo registrado','Registered email'],['Contraseña','Password'],['Contraseña (mínimo 6 caracteres)','Password (at least 6 characters)'],['Nueva contraseña (mínimo 6 caracteres)','New password (at least 6 characters)'],['Username (para registrarte)','Username (for signup)'],
  ['Puntos','Points'],['Votos','Votes'],['Victorias','Wins'],['Derrotas','Losses'],['Ganador','Winner'],['Empate','Tie'],['Sin resultados','No results'],['Ver resultados','View results'],['Tu elección','Your pick'],['TU ELECCIÓN','YOUR PICK'],
- ['Votar','Vote'],['Vota','Vote'],['Abierta','Open'],['Finalizada','Finished'],['Cerrada','Closed'],['No hay resultados todavía.','No results yet.'],
+ ['Votar','Vote'],['Vota','Vote'],['Abierta','Open'],['Finalizada','Finished'],['Cerrada','Closed'],['CERRADO','CLOSED'],['No hay resultados todavía.','No results yet.'],
  ['Ordenados por victorias. Desempate: porcentaje de victorias y carreras completadas.','Sorted by wins. Ties are broken by win percentage and completed races.'],
  ['Ordenados por porcentaje de victorias (mínimo 2 carreras).','Sorted by win percentage (minimum 2 races).'],
  ['Usuarios registrados','Registered users'],['Administrar carreras','Manage races'],['Administrar garaje','Manage garage'],['Administrar usuarios','Manage users'],
  ['Búsqueda','Search'],['Buscar','Search'],['Recientes','Recent'],['Registro','Sign up'],['Guardar','Save'],['Editar','Edit'],['Eliminar','Delete'],['Actualizar','Update'],['Publicar','Publish'],['Agregar','Add'],['Foto','Photo'],['Nombre','Name'],['Fecha','Date'],['Estado','Status'],
  ['Inicio','Home'],['Carreras','Races'],['Garaje','Garage'],['Campeones','Champions'],['Mi perfil','My profile'],
- ['⭐ +10 puntos por participar · 🏆 +100 puntos por acertar','⭐ +10 points for participating · 🏆 +100 points for a correct pick'],['No hay carreras finalizadas.','No completed races yet.'],['No hay votos todavía.','No votes yet.'],['Un voto por cuenta y carrera','One vote per account per race'],['votos registrados','registered votes'],['voto registrado','registered vote'],['votos','votes'],['voto','vote'],['pts','pts'],
+ ['⭐ +10 puntos por participar','⭐ +10 points for participating'],['🏆 +100 puntos por acertar','🏆 +100 points for a correct pick'],['⭐ +10 puntos por participar · 🏆 +100 puntos por acertar','⭐ +10 points for participating · 🏆 +100 points for a correct pick'],['No hay carreras finalizadas.','No completed races yet.'],['No hay votos todavía.','No votes yet.'],['Un voto por cuenta y carrera','One vote per account per race'],['votos registrados','registered votes'],['voto registrado','registered vote'],['votos','votes'],['voto','vote'],['pts','pts'],
  ['🏁 Ver carrera','🏁 View race'],['Conectados a Supabase','Connected to Supabase']
  ];
  const toEn=new Map(phrasePairs),toEs=new Map(phrasePairs.map(([es,en])=>[en,es]));
