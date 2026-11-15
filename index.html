@@ -138,6 +138,8 @@ header .top .logo{width:245px;height:145px;object-fit:contain;max-width:100%}
 <label for="lfwRaceB">Carrito 2</label><select class="input" id="lfwRaceB"><option value="">Carrito 2</option></select>
 <label for="lfwRaceDate">📅 Fecha y hora de la competencia (opcional, hora local)</label>
 <input class="input" id="lfwRaceDate" type="datetime-local"/>
+<label for="lfwRacePlatform">📺 Plataforma de transmisión en vivo (opcional)</label>
+<select class="input" id="lfwRacePlatform"><option value="">Por anunciar / To be announced</option><option value="tiktok">TikTok Live</option><option value="facebook">Facebook Live</option><option value="instagram">Instagram Live</option><option value="youtube">YouTube Live</option><option value="kick">Kick</option><option value="twitch">Twitch</option></select>
 <button class="primary" id="lfwAddRace" type="button">🏁 Publicar carrera</button></div>
 <p aria-live="polite" id="lfwRaceStatus" role="status" style="padding:8px 0;font-weight:700">Listo para guardar carreras.</p>
 <p class="muted small">🔒 Los conteos de votos solo se muestran en este panel de administrador.</p>
@@ -563,6 +565,25 @@ function raceDateText(date){if(!date)return raceLang('Fecha por confirmar','Date
 function dateInputValue(date){if(!date)return '';const d=new Date(date);if(Number.isNaN(d.getTime()))return '';const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
 function datePayload(value){if(!value)return null;const d=new Date(value);if(Number.isNaN(d.getTime()))throw new Error('Fecha u hora no válida');return d.toISOString()}
 function adminRaceButton(text,cls,onClick){const b=document.createElement('button');b.type='button';b.textContent=text;b.className=cls;b.onclick=onClick;return b}
+const LFW_PLATFORMS={tiktok:'TikTok Live',facebook:'Facebook Live',instagram:'Instagram Live',youtube:'YouTube Live',kick:'Kick',twitch:'Twitch'};
+let racePlatformField=false;
+function lfwPlatformLabel(value){return LFW_PLATFORMS[value]||''}
+function lfwPlatformSelect(value=''){
+ const select=document.createElement('select');select.className='input';
+ for(const [v,label] of [['',raceLang('Por anunciar','To be announced')],...Object.entries(LFW_PLATFORMS)]){
+  const option=document.createElement('option');option.value=v;option.textContent=label;select.append(option);
+ }
+ select.value=LFW_PLATFORMS[value]?value:'';
+ select.disabled=!racePlatformField;
+ return select;
+}
+function lfwAppendPlatform(container,race,admin=false){
+ const name=lfwPlatformLabel(race.live_platform);
+ if(!name)return;
+ const row=document.createElement('div');
+ row.style.cssText=admin?'text-align:center;color:#9edbff;font-size:12px;margin:5px 0 11px;font-weight:750':'text-align:center;color:#9edbff;font-size:12px;margin:-4px 0 12px;font-weight:750';
+ row.textContent='📺 '+raceLang('EN VIVO POR ','LIVE ON ')+name;container.append(row);
+}
 let adminRacesLoadVersion=0;
 async function loadAdminRaces(){
  if(!session||session.user?.id!==ADMIN_UID)return;
@@ -571,8 +592,15 @@ async function loadAdminRaces(){
  const content=document.createDocumentFragment();
  try{
   // Compatibilidad con bases aún sin la migración (los botones avanzados requerirán el SQL).
-  try{adminRaces=await api('races?select=id,title,car1_id,car2_id,winner_id,status,created_at,scheduled_at,voting_closed&order=created_at.desc&limit=500');raceAdvancedFields=true}
-  catch(err){if(!/scheduled_at|voting_closed|column|schema cache/i.test(err.message))throw err;raceAdvancedFields=false;adminRaces=await api('races?select=id,title,car1_id,car2_id,winner_id,status,created_at&order=created_at.desc&limit=500')}
+  try{
+   adminRaces=await api('races?select=id,title,car1_id,car2_id,winner_id,status,created_at,scheduled_at,voting_closed,live_platform&order=created_at.desc&limit=500');
+   raceAdvancedFields=true;racePlatformField=true;
+  }catch(err){
+   if(!/live_platform|column|schema cache|scheduled_at|voting_closed/i.test(err.message))throw err;
+   racePlatformField=false;
+   try{adminRaces=await api('races?select=id,title,car1_id,car2_id,winner_id,status,created_at,scheduled_at,voting_closed&order=created_at.desc&limit=500');raceAdvancedFields=true}
+   catch(e){if(!/scheduled_at|voting_closed|column|schema cache/i.test(e.message))throw e;raceAdvancedFields=false;adminRaces=await api('races?select=id,title,car1_id,car2_id,winner_id,status,created_at&order=created_at.desc&limit=500')}
+  }
   if(version!==adminRacesLoadVersion)return;
   // Cada carrera se identifica únicamente por su ID.
   adminRaces=[...new Map(adminRaces.map(r=>[r.id,r])).values()];
@@ -580,6 +608,7 @@ async function loadAdminRaces(){
   if(version!==adminRacesLoadVersion)return;
   const counts=new Map();for(const v of votes){const k=v.race_id+'|'+v.car_id;counts.set(k,(counts.get(k)||0)+1)}
   const count=document.createElement('p');count.className='muted small';count.textContent=adminRaces.length+' carreras guardadas';content.append(count);
+  if(!racePlatformField){const note=document.createElement('p');note.className='muted small';note.style.color='#ffd56f';note.textContent='📺 Para activar las plataformas de transmisión, ejecuta el SQL live_platform en Supabase.';content.append(note)}
   if(!raceAdvancedFields){const warn=document.createElement('p');warn.className='muted small';warn.style.color='#ffd56f';warn.textContent='⚠️ Para programar fechas o cerrar votaciones, primero ejecuta el SQL de actualización en Supabase.';content.append(warn)}
   for(const race of adminRaces){
    const item=document.createElement('article');item.className='lfw-admin-race';
@@ -587,7 +616,7 @@ async function loadAdminRaces(){
    const title=document.createElement('div');title.className='lfw-admin-race-title';title.textContent='🏁 '+(race.title||'Carrera');
    const status=document.createElement('span');status.className='lfw-admin-status'+(race.winner_id?' finished':isVotingClosed(race)?' closed':'');
    status.textContent=race.winner_id?raceLang('🏆 FINALIZADA','🏆 FINISHED'):isVotingClosed(race)?raceLang('🔒 VOTACIÓN CERRADA','🔒 VOTING CLOSED'):raceLang('🟢 VOTACIÓN ABIERTA','🟢 VOTING OPEN');head.append(title,status);item.append(head);
-   const schedule=document.createElement('p');schedule.className='lfw-admin-time';schedule.textContent='📅 '+raceDateText(race.scheduled_at);item.append(schedule);
+   const schedule=document.createElement('p');schedule.className='lfw-admin-time';schedule.textContent='📅 '+raceDateText(race.scheduled_at);item.append(schedule);lfwAppendPlatform(item,race,true);
    const duel=document.createElement('div');duel.className='lfw-admin-duel';
    for(const carId of [race.car1_id,race.car2_id]){
     const car=adminCars.find(c=>c.id===carId);
@@ -600,7 +629,7 @@ async function loadAdminRaces(){
    }
    item.append(duel);
    const actions=document.createElement('div');actions.className='lfw-admin-actions';
-   const edit=adminRaceButton(raceLang('✏️ Editar nombre, fecha y hora','✏️ Edit name, date and time'),'secondary lfw-full',()=>openRaceEditor(race,item));
+   const edit=adminRaceButton(raceLang('✏️ Editar carrera y transmisión','✏️ Edit race and livestream'),'secondary lfw-full',()=>openRaceEditor(race,item));
    const close=adminRaceButton(isVotingClosed(race)?raceLang('🔓 Reabrir votación','🔓 Reopen voting'):raceLang('🔒 Cerrar votaciones','🔒 Close voting'),'secondary',()=>toggleRaceVoting(race));
    close.disabled=!!race.winner_id||!raceAdvancedFields;
    const del=adminRaceButton(raceLang('🗑 Eliminar carrera','🗑 Delete race'),'lfw-admin-danger',()=>deleteRace(race));
@@ -610,15 +639,17 @@ async function loadAdminRaces(){
  }catch(e){if(version===adminRacesLoadVersion)message('No se pudieron leer las carreras/votos: '+e.message)}
 }
 async function addRace(){
- const title=$('lfwRaceTitle').value.trim(),a=$('lfwRaceA').value,b=$('lfwRaceB').value,date=$('lfwRaceDate').value;
+ const title=$('lfwRaceTitle').value.trim(),a=$('lfwRaceA').value,b=$('lfwRaceB').value,date=$('lfwRaceDate').value,platform=$('lfwRacePlatform').value;
  if(!title||!a||!b||a===b){message('Escribe el título y elige dos carros distintos.');return}
  $('lfwAddRace').disabled=true;message('Guardando carrera…');
  try{
   if(date&&!raceAdvancedFields)throw new Error('Debes ejecutar primero el SQL de actualización para guardar fecha y hora.');
+  if(platform&&!racePlatformField)throw new Error('Primero ejecuta el SQL live_platform en Supabase para guardar la plataforma.');
   const body={title,car1_id:a,car2_id:b,winner_id:null,status:'pending'};
   if(raceAdvancedFields){body.scheduled_at=datePayload(date);body.voting_closed=false}
+  if(racePlatformField)body.live_platform=platform||null;
   await api('races',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});
-  $('lfwRaceTitle').value='';$('lfwRaceA').value='';$('lfwRaceB').value='';$('lfwRaceDate').value='';updateWinnerOptions();
+  $('lfwRaceTitle').value='';$('lfwRaceA').value='';$('lfwRaceB').value='';$('lfwRaceDate').value='';$('lfwRacePlatform').value='';updateWinnerOptions();
   await loadAdminRaces();await loadLiveRaces();message('✅ Carrera publicada con votación abierta.');
  }catch(e){message('No se pudo guardar la carrera: '+e.message)}finally{$('lfwAddRace').disabled=false}
 }
@@ -629,17 +660,19 @@ function openRaceEditor(race,item){
  const name=document.createElement('input');name.className='input';name.maxLength=150;name.value=race.title||'';
  const timeLabel=document.createElement('label');timeLabel.textContent=raceLang('Fecha y hora (opcional)','Date and time (optional)');
  const date=document.createElement('input');date.className='input';date.type='datetime-local';date.value=dateInputValue(race.scheduled_at);date.disabled=!raceAdvancedFields;
+ const platformLabel=document.createElement('label');platformLabel.textContent=raceLang('📺 Plataforma de transmisión','📺 Livestream platform');
+ const platform=lfwPlatformSelect(race.live_platform);
  const save=adminRaceButton(raceLang('💾 Guardar cambios','💾 Save changes'),'primary',async()=>{
   if(!name.value.trim()){message('El nombre no puede estar vacío');return}
   save.disabled=true;
   try{
-   const patch={title:name.value.trim()};if(raceAdvancedFields)patch.scheduled_at=datePayload(date.value);
+   const patch={title:name.value.trim()};if(raceAdvancedFields)patch.scheduled_at=datePayload(date.value);if(racePlatformField)patch.live_platform=platform.value||null;
    await api('races?id=eq.'+encodeURIComponent(race.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)});
    await loadAdminRaces();await loadLiveRaces();message('✅ Carrera actualizada');
   }catch(e){message('Error editando: '+e.message);save.disabled=false}
  });
  const cancel=adminRaceButton(raceLang('Cancelar','Cancel'),'secondary',()=>form.remove());
- form.append(lbl,name,timeLabel,date,save,cancel);item.append(form);
+ form.append(lbl,name,timeLabel,date,platformLabel,platform,save,cancel);item.append(form);
 }
 async function toggleRaceVoting(race){
  if(!raceAdvancedFields){message('Primero instala la actualización SQL en Supabase.');return}
@@ -672,7 +705,8 @@ async function loadLiveRaces(){
  const all=document.getElementById('lfwAllRaces');
  const results=document.getElementById('lfwHomeResultsBody');
  try{
-  let r=await fetch(BASE+'/rest/v1/races?select=id,title,car1_id,car2_id,winner_id,status,created_at,scheduled_at,voting_closed&order=created_at.asc&limit=500',{headers:{apikey:APIKEY}});
+  let r=await fetch(BASE+'/rest/v1/races?select=id,title,car1_id,car2_id,winner_id,status,created_at,scheduled_at,voting_closed,live_platform&order=created_at.asc&limit=500',{headers:{apikey:APIKEY}});
+  if(!r.ok && r.status===400)r=await fetch(BASE+'/rest/v1/races?select=id,title,car1_id,car2_id,winner_id,status,created_at,scheduled_at,voting_closed&order=created_at.asc&limit=500',{headers:{apikey:APIKEY}});
   if(!r.ok && r.status===400)r=await fetch(BASE+'/rest/v1/races?select=id,title,car1_id,car2_id,winner_id,status,created_at&order=created_at.asc&limit=500',{headers:{apikey:APIKEY}});
   if(!r.ok)throw new Error('HTTP '+r.status);
   const races=await r.json();
@@ -712,6 +746,7 @@ async function loadLiveRaces(){
    title.textContent='🏁 '+(race.title||'Próxima carrera');wrap.append(title);
    const subtitle=document.createElement('div');subtitle.style.cssText='text-align:center;color:#aebbd0;font-size:12px;margin-bottom:14px';
    subtitle.textContent=isVotingClosed(race)?'🔒 VOTACIÓN CERRADA · SIN GANADOR':'🟢 VOTACIÓN ABIERTA · SIN GANADOR';wrap.append(subtitle);if(race.scheduled_at){const when=document.createElement('div');when.style.cssText='text-align:center;color:#e7cf87;font-size:12px;margin-top:-8px;margin-bottom:12px;font-weight:700';when.textContent='📅 '+raceDateText(race.scheduled_at);wrap.append(when)}
+   lfwAppendPlatform(wrap,race);
    const duel=document.createElement('div');duel.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:6px;align-items:start';
    [race.car1_id,race.car2_id].forEach((carId,i)=>{
     if(i===1){const vs=document.createElement('div');vs.textContent='VS';vs.style.cssText='font-size:13px;font-weight:900;color:#ff4a51;text-align:center;padding-top:56px';duel.append(vs)}
