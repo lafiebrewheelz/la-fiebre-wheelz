@@ -801,6 +801,7 @@ async function loadLiveRaces(){
    title.textContent='🏁 '+(race.title||'Próxima carrera');wrap.append(title);
    const subtitle=document.createElement('div');subtitle.style.cssText='text-align:center;color:#aebbd0;font-size:12px;margin-bottom:14px';
    subtitle.textContent=isVotingClosed(race)?'🔒 VOTACIÓN CERRADA · SIN GANADOR':'🟢 VOTACIÓN ABIERTA · SIN GANADOR';wrap.append(subtitle);if(race.scheduled_at){const when=document.createElement('div');when.style.cssText='text-align:center;color:#e7cf87;font-size:12px;margin-top:-8px;margin-bottom:12px;font-weight:700';when.textContent='📅 '+raceDateText(race.scheduled_at);wrap.append(when)}
+   if(race.live_platform){const platform=document.createElement('div');platform.className='lfw-public-platform';platform.style.cssText='text-align:center;color:#c4d6f4;font-size:12px;font-weight:700;margin-top:-6px;margin-bottom:12px';platform.textContent='📺 '+race.live_platform;wrap.append(platform)}
    const duel=document.createElement('div');duel.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:6px;align-items:start';
    [race.car1_id,race.car2_id].forEach((carId,i)=>{
     if(i===1){const vs=document.createElement('div');vs.textContent='VS';vs.style.cssText='font-size:13px;font-weight:900;color:#ff4a51;text-align:center;padding-top:56px';duel.append(vs)}
