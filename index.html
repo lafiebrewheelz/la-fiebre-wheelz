@@ -141,7 +141,7 @@ header .top .logo{width:245px;height:145px;object-fit:contain;max-width:100%}
 <p role="status" aria-live="polite" class="muted small" id="lfwHomeNotifyStatus"></p>
 </div>
 <div id="lfwHomeEmailGuest"><p class="muted small" data-i18n="homeNotifyGuest">Crea tu cuenta o inicia sesión para elegir tus notificaciones.</p><button type="button" class="primary" id="lfwHomeNotifyLogin" data-i18n="homeNotifyAction">Activar avisos</button></div>
-</div><div class="hero"><div><h1>¡Vota la próxima carrera!</h1><p>Tú decides quién corre, quién gana tu voto y quién merece revancha.</p><button class="primary" onclick="go('eventos')">🏁 Ver próximo duelo →</button></div></div><div class="panel" id="lfwLiveHome" style="margin-bottom:18px"><h2>🏁 Carrera destacada</h2><div id="lfwLiveHomeBody" role="status">Cargando carreras desde Supabase…</div></div><div class="panel" id="lfwHomeResults" style="margin-bottom:18px"><h2>🏁 Últimas 5 carreras</h2><div id="lfwHomeResultsBody">Cargando resultados…</div></div><div class="grid"><div></div></div><div class="lfw-home-mini-panels">
+</div><div class="hero"><div><h1>¡Vota la próxima carrera!</h1><p>Tú decides quién corre, quién gana tu voto y quién merece revancha.</p><button class="primary" onclick="go('eventos')">🏁 Ver próximo duelo →</button></div></div><div class="panel" id="lfwHomeResults" style="margin-bottom:18px"><h2>🏁 Últimas 5 carreras</h2><div id="lfwHomeResultsBody">Cargando resultados…</div></div><div class="grid"><div></div></div><div class="lfw-home-mini-panels">
 <div class="panel lfw-home-mini-panel"><h2>🏎️ Garaje</h2><div class="lfw-mini-garage" id="lfwGaragePreview" aria-live="polite">Cargando carritos…</div><button class="secondary" onclick="go('coleccion')">Ver garaje →</button></div>
 <div class="panel lfw-home-mini-panel"><h2>🏆 Campeones</h2><div class="lfw-mini-champs" id="lfwChampPreview" aria-live="polite">Cargando campeones…</div><button class="secondary" onclick="go('campeones')">Ver campeones →</button></div>
 </div></section>
@@ -770,11 +770,10 @@ async function loadLiveRaces(){
   if(!cr.ok)throw new Error('No se pudo leer la colección: HTTP '+cr.status);
   const currentCars=await cr.json();
   const names=new Map(currentCars.map(c=>[c.id,c.name]));
-  if(!home)return;
-  home.replaceChildren();if(all)all.replaceChildren();if(results)results.replaceChildren();
+  if(home)home.replaceChildren();if(all)all.replaceChildren();if(results)results.replaceChildren();
   const pending=races.filter(x=>!x.winner_id&&x.status!=='cancelled').sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));
   if(!pending.length){
-   const empty=document.createElement('p');empty.className='muted';empty.textContent='Todavía no hay carreras con votación abierta.';home.append(empty);
+   const empty=document.createElement('p');empty.className='muted';empty.textContent='Todavía no hay carreras con votación abierta.';if(home)home.append(empty);
    if(all)all.textContent='No hay carreras abiertas para votar.';
   }
   let votes=[];
@@ -842,7 +841,7 @@ async function loadLiveRaces(){
    const footLine2=document.createElement('div');footLine2.textContent='🏆 +100 puntos por acertar';
    foot.append(footLine1,footLine2);wrap.append(foot);
    if(all)all.append(wrap);
-   if(raceIndex===0)home.append(wrap.cloneNode(true));
+   if(raceIndex===0&&home)home.append(wrap.cloneNode(true));
   }
   // Los clones no conservan eventos. Transferir la primera tarjeta original a Inicio
   // y construir una segunda tarjeta interactiva en Carreras.
