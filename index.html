@@ -171,7 +171,7 @@ header .top .logo{width:245px;height:145px;object-fit:contain;max-width:100%}
 <h3 data-i18n="history">🏁 Historial de participaciones</h3><div class="lfw-filter"><button class="chosen" data-i18n="all" data-lfw-filter="all" type="button">Todas</button><button data-i18n="won" data-lfw-filter="won" type="button">Ganadas</button><button data-i18n="lost" data-lfw-filter="lost" type="button">Perdidas</button><button data-i18n="pending" data-lfw-filter="pending" type="button">Pendientes</button></div><div style="overflow-x:auto"><table class="lfw-history"><thead><tr><th data-i18n="race">Carrera</th><th data-i18n="choice">Mi elección</th><th data-i18n="result">Resultado</th><th data-i18n="pointsShort">Pts.</th></tr></thead><tbody id="lfwHistoryRows"></tbody></table></div><p class="muted small" id="lfwHistoryDetail"></p></div></div></section>
 <section class="page" id="apuestas"><div class="panel"><h2 id="lfwBetTitle">⭐ Apuestas entre pilotos</h2><p id="lfwBetRules" class="muted small"></p><p id="lfwBetBalance"></p><div id="lfwBetList"></div></div></section><section class="page" id="admin"><div class="panel"><h2>🔐 Panel privado · La Fiebre Wheelz</h2><p class="muted">Acceso exclusivo para el administrador. Las operaciones se envían a Supabase; el panel mostrará el resultado o error.</p>
 <div id="lfwLogin"><h3>Iniciar sesión</h3><input autocomplete="username" class="input" id="lfwEmail" placeholder="Correo electrónico" type="email"/><input autocomplete="current-password" class="input" id="lfwPassword" placeholder="Contraseña" type="password"/><button class="primary" id="lfwSignIn">Entrar al panel</button></div>
-<div hidden="" id="lfwPrivate"><div class="row"><span class="muted small" id="lfwWho"></span><button class="primary" id="lfwSignOut" type="button">Cerrar sesión</button></div><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><button class="secondary" id="lfwOpenUsers" type="button">👥 Administrar usuarios</button><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><details id="socialAdmin" class="panel"><summary><span id="socialAdminLabel">🚩 Reportes de comunidad</span> (<span id="socialAdminCount">0</span>)</summary><div id="socialReportList"></div></details><div id="lfwAdminMenu" style="display:grid;gap:14px;margin-top:22px"><button class="secondary" id="lfwOpenGarage" type="button">🏎️ Administrar garaje →</button><button class="secondary" id="lfwOpenRaces" type="button">🏁 Administrar carreras →</button></div>
+<div hidden="" id="lfwPrivate"><div class="row"><span class="muted small" id="lfwWho"></span><button class="primary" id="lfwSignOut" type="button">Cerrar sesión</button></div><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><button class="secondary" id="lfwOpenUsers" type="button">👥 Administrar usuarios</button><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><details id="socialAdmin" class="panel"><summary><span id="socialAdminLabel">🚩 Reportes de comunidad</span> (<span id="socialAdminCount">0</span>)</summary><div id="socialReportList"></div></details><details id="lfwAdminBets" class="panel" style="margin-top:14px"><summary style="cursor:pointer;font-weight:bold;color:#f5ce68" id="lfwAdminBetsTitle">⭐ Administrar apuestas</summary><p class="muted small" id="lfwAdminBetsHelp">Cancela retos pendientes o aceptados y devuelve las estrellas automáticamente.</p><div class="row" style="gap:8px;flex-wrap:wrap"><input id="lfwAdminBetSearch" placeholder="Buscar carrera o usuario" type="search" style="max-width:100%"/><button type="button" class="secondary" id="lfwAdminBetRefresh">Actualizar lista</button></div><p id="lfwAdminBetStatus" class="muted small" role="status"></p><div id="lfwAdminBetList"></div></details><div id="lfwAdminMenu" style="display:grid;gap:14px;margin-top:22px"><button class="secondary" id="lfwOpenGarage" type="button">🏎️ Administrar garaje →</button><button class="secondary" id="lfwOpenRaces" type="button">🏁 Administrar carreras →</button></div>
 <div id="lfwGarageView" hidden><button class="secondary lfwAdminBack" type="button">← Volver al panel Admin</button><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><h3>🏎️ Garaje oficial</h3><p class="muted small">Agrega el nombre y una foto desde tu iPhone. Las fotos se guardan en Supabase Storage.</p><input class="input" id="lfwCarName" maxlength="140" placeholder="Nombre del Hot Wheels"/><input accept="image/*" class="input" id="lfwCarPhoto" type="file"/><button class="primary" id="lfwAddCar" type="button">+ Agregar carrito</button><p aria-live="polite" id="lfwCarStatus" role="status" style="padding:8px 0;font-weight:700">Listo para agregar carritos.</p><div id="lfwAdminCars"></div>
 </div>
 <div id="lfwRacesView" hidden><button class="secondary lfwAdminBack" type="button">← Volver al panel Admin</button><hr style="border:0;border-top:1px solid #374151;margin:24px 0"/><h3>🏁 Administrar carreras y resultados</h3>
@@ -406,10 +406,51 @@ async function api(path,options={}){
  if(!session?.access_token)throw new Error('Tu sesión venció. Inicia sesión nuevamente.');
  return request('/rest/v1/'+path,{...options,headers:{...authHeaders(),...(options.headers||{})}})
 }
+let adminBetRows=[], adminBetBusy=false;
+const abTr=(es,en)=>window.lfwAuth?.lang==='en'?en:es;
+function adminBetLabels(){
+ $('lfwAdminBetsTitle').textContent=abTr('⭐ Administrar apuestas','⭐ Manage bets');
+ $('lfwAdminBetsHelp').textContent=abTr('Cancela retos pendientes o aceptados y devuelve las estrellas automáticamente.','Cancel open or matched challenges and automatically refund stars.');
+ $('lfwAdminBetSearch').placeholder=abTr('Buscar carrera o usuario','Search race or user');
+ $('lfwAdminBetRefresh').textContent=abTr('Actualizar lista','Refresh list');
+}
+function renderAdminBets(){
+ const box=$('lfwAdminBetList');box.replaceChildren();
+ const q=$('lfwAdminBetSearch').value.trim().toLowerCase();
+ const rows=adminBetRows.filter(r=>[r.race_title,r.creator_name,r.opponent_name].some(v=>String(v||'').toLowerCase().includes(q)));
+ if(!rows.length){box.textContent=abTr('No hay apuestas activas que mostrar.','No active bets to display.');return;}
+ for(const r of rows){
+  const row=document.createElement('article');row.className='lfw-bet-card';
+  const title=document.createElement('h3');title.textContent=r.race_title;
+  const detail=document.createElement('p');detail.textContent='@'+r.creator_name+(r.opponent_name?' VS @'+r.opponent_name:' · '+abTr('Sin rival','No opponent'))+' · ⭐ '+r.stake+' '+abTr('por participante','per player');
+  const state=document.createElement('p');state.className='muted small';state.textContent=(r.status==='matched'?abTr('Aceptada','Matched'):abTr('Pendiente','Open'))+' · '+new Date(r.created_at).toLocaleString();
+  const btn=document.createElement('button');btn.type='button';btn.className='secondary';btn.style.borderColor='#d35c66';btn.textContent=abTr('Cancelar y devolver estrellas','Cancel and refund stars');
+  btn.onclick=async()=>{
+   if(!confirm(abTr('¿Cancelar esta apuesta y devolver '+r.stake+' estrellas a cada participante?','Cancel this bet and refund '+r.stake+' stars to each participant?')))return;
+   btn.disabled=true;try{
+    await api('rpc/lfw_admin_bet_cancel',{method:'POST',body:JSON.stringify({p_id:r.id})});
+    await loadAdminBets();$('lfwAdminBetStatus').textContent=abTr('Apuesta cancelada. Estrellas devueltas.','Bet cancelled. Stars refunded.');
+    Promise.resolve(window.lfwAuth?.loadProfile?.()).catch(()=>{});window.lfwRefreshTop3?.();
+   }catch(e){$('lfwAdminBetStatus').textContent=e.message;btn.disabled=false;}
+  };row.append(title,detail,state,btn);box.append(row);
+ }
+}
+async function loadAdminBets(){
+ if(adminBetBusy||!session||session.user?.id!==ADMIN_UID)return;
+ adminBetBusy=true;adminBetLabels();$('lfwAdminBetRefresh').disabled=true;
+ try{adminBetRows=await api('rpc/lfw_admin_bet_list',{method:'POST',body:'{}'});renderAdminBets();$('lfwAdminBetStatus').textContent=abTr('Apuestas activas: ','Active bets: ')+adminBetRows.length;}
+ catch(e){adminBetRows=[];$('lfwAdminBetList').replaceChildren();$('lfwAdminBetStatus').textContent=e.message;}
+ finally{adminBetBusy=false;$('lfwAdminBetRefresh').disabled=false;}
+}
+$('lfwAdminBets').addEventListener('toggle',()=>{if($('lfwAdminBets').open)loadAdminBets()});
+$('lfwAdminBetRefresh').onclick=loadAdminBets;
+$('lfwAdminBetSearch').oninput=renderAdminBets;
+$('lfwLanguage').addEventListener('click',()=>queueMicrotask(()=>{adminBetLabels();if($('lfwAdminBets').open)renderAdminBets()}));
 function view(){
  const authorized=!!session && session.user?.id===ADMIN_UID;
  $('lfwLogin').hidden=authorized;$('lfwPrivate').hidden=!authorized;
  $('lfwAdminNav').hidden=!authorized;
+ if(!authorized){adminBetRows=[];$('lfwAdminBets').open=false;$('lfwAdminBetList').replaceChildren();}
  if(!authorized && !$('lfwUsersModal').hidden)$('lfwUsersModal').hidden=true;
  if(authorized)$('lfwWho').textContent='Sesión: '+(session.user.email||'Administrador');
 }
